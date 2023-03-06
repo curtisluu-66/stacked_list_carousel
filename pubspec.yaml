@@ -1,0 +1,19 @@
+name: stacked_card_carousel
+description: Interactive carousel layout that arrange items vertically stacked, which most suitable for implementing in-app banners use case.
+version: 0.0.1
+repository: https://github.com/hongduc6/stacked_list_carousel
+
+environment:
+  sdk: '>=2.19.3 <3.0.0'
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
