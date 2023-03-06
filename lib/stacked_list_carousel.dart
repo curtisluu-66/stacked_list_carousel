@@ -2,7 +2,7 @@ library stacked_list_carousel;
 
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'src/controller/stacked_card_controller.dart';
+import 'src/controller/stacked_list_controller.dart';
 
 typedef ItemBuilder = Widget Function(
   BuildContext context,

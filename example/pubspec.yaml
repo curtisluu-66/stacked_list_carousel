@@ -14,7 +14,7 @@ dependencies:
 
   cupertino_icons: ^1.0.2
 
-  stacked_card_carousel:
+  stacked_list_carousel:
     path: ../
 
 dev_dependencies:

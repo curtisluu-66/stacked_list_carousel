@@ -1,4 +1,4 @@
-name: stacked_card_carousel
+name: stacked_list_carousel
 description: Interactive carousel layout that arrange items vertically stacked, which most suitable for implementing in-app banners use case.
 version: 0.0.1
 repository: https://github.com/hongduc6/stacked_list_carousel

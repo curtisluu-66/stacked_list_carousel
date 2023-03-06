@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:stacked_card_carousel/src/extension/list_reorder_extension.dart';
+import 'package:stacked_list_carousel/src/extension/list_reorder_extension.dart';
 
 /// Control animate state of [StackedCardCarousel], handle user's interactivity
 /// and ordering children.
