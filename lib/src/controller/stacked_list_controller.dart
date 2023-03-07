@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+import 'package:stacked_list_carousel/src/enums/outermost_card_behavior.dart';
 import 'package:stacked_list_carousel/src/extension/list_reorder_extension.dart';
 
 /// Control animate state of [StackedCardCarousel], handle user's interactivity
@@ -17,12 +19,21 @@ class StackedListController {
   /// See [StackedCardCarousel.maxDisplayedBannersCount]
   final int maxDisplayedBannersCount;
 
-  final int itemCount;
+  final int itemsCount;
 
   /// Animation controller of stacked card carousel
-  final AnimationController _animationController;
+  final AnimationController _transitionController;
+  final AnimationController _outermostTransitionController;
 
-  AnimationController get animationController => _animationController;
+  AnimationController get transitionController => _transitionController;
+
+  AnimationController get outermostTransitionController =>
+      _outermostTransitionController;
+
+  OutermostCardBehavior cardBehavior = OutermostCardBehavior.flyAway;
+
+  double get transitionValue => transitionController.value;
+  double get outermostTransitionValue => outermostTransitionController.value;
 
   /// List of widgets that laid out in carousel.
   List<Widget> cardWidgets = [];
@@ -38,23 +49,41 @@ class StackedListController {
 
   StackedListController({
     required this.maxDisplayedBannersCount,
-    required this.itemCount,
+    required this.itemsCount,
     required Duration transitionDuration,
+    required Duration outermostTransitionDuration,
     required Duration autoSlideDuration,
     required TickerProvider vsync,
     this.onSwapDone,
-  })  : _animationController = AnimationController(
+  })  : _autoSlideDuration = autoSlideDuration,
+        _transitionController = AnimationController(
           vsync: vsync,
           duration: transitionDuration,
         ),
-        _autoSlideDuration = autoSlideDuration {
+        _outermostTransitionController = AnimationController(
+          vsync: vsync,
+          duration: outermostTransitionDuration,
+        ) {
     displayedIndexes = List.generate(
       maxDisplayedBannersCount,
       (index) => index,
     );
+
     sizeFactors = List.generate(
       maxDisplayedBannersCount,
       (index) => maxDisplayedBannersCount - index - 1,
+    );
+
+    _outermostTransitionController.addListener(
+      () {
+        if (cardBehavior == OutermostCardBehavior.flyAway) {
+          _outermostCardOffset.value =
+              _outermostCardOffset.value * (1 + outermostTransitionValue / 4);
+        } else {
+          _outermostCardOffset.value =
+              _outermostCardOffset.value * outermostTransitionValue;
+        }
+      },
     );
   }
 
@@ -81,30 +110,38 @@ class StackedListController {
   ///
   /// If user's swipe gesture's distance longer than [dxThreshold] (width) of the banner,
   /// dismiss it and trigger [swapOrders].
-  void handleDragEnd(
+  Future<void> handleDragEnd(
     DragEndDetails details,
     double cardViewWidth,
     double layoutWidth,
-  ) {
-    _unlockTimer();
-    _outermostCardOffset.value = Offset.zero;
+  ) async {
+    final double dxThreshold = layoutWidth / 2;
+    if ((details.velocity.pixelsPerSecond.dx).abs() > dxThreshold) {
+      await swapOrders(withOutermostDiscardEffect: true);
+    } else {
+      double dxMoved =
+          (_outermostCardOffset.value.dx - (layoutWidth - cardViewWidth) / 2)
+              .abs();
 
-    if ((details.velocity.pixelsPerSecond.dx).abs() > 600) {
-      return swapOrders();
+      if (dxMoved > dxThreshold) {
+        await swapOrders(withOutermostDiscardEffect: true);
+      } else {
+        /// If outermost card wasn't discarded, change behavior mode to come back
+        /// then animates offset to Offset.zero.
+        cardBehavior = OutermostCardBehavior.comeBack;
+        await _outermostTransitionController.reverse(from: 1.0).then(
+              (_) => cardBehavior = OutermostCardBehavior.flyAway,
+            );
+      }
     }
-    double dxMoved =
-        (_outermostCardOffset.value.dx - (layoutWidth - cardViewWidth) / 2)
-            .abs();
-    double dxThreshold = cardViewWidth * 0.7;
-    if (dxMoved > dxThreshold) {
-      swapOrders();
-    }
+
+    _unlockTimer();
   }
 
   /// Called only once when the widget starts building process.
   void setCards(List<Widget> banners) {
     cardWidgets.addAll(banners);
-    _animationController.forward();
+    _transitionController.forward();
     _startTimer();
   }
 
@@ -114,9 +151,15 @@ class StackedListController {
 
   /// Change banners list's order linearly. Each banner moving to front side closer,
   /// current banner will be hidden and pushed to the tail of banners list.
-  void swapOrders() {
+  Future<void> swapOrders({
+    bool withOutermostDiscardEffect = false,
+  }) async {
+    if (withOutermostDiscardEffect) {
+      await outermostTransitionController.forward(from: 0.0);
+    }
+
     for (int i = 0; i < displayedIndexes.length; i++) {
-      displayedIndexes[i] = (displayedIndexes[i] + 1) % itemCount;
+      displayedIndexes[i] = (displayedIndexes[i] + 1) % itemsCount;
     }
 
     displayedIndexes.rotateLTR();
@@ -124,8 +167,12 @@ class StackedListController {
     cardWidgets.rotateRTL();
 
     _transitionsCount++;
-    onSwapDone?.call(_transitionsCount % itemCount);
-    _animationController.forward(from: 0.0);
+
+    _outermostTransitionController.reset();
+
+    _transitionController.forward(from: 0.0);
+    onSwapDone?.call(_transitionsCount % itemsCount);
+    _outermostCardOffset.value = Offset.zero;
   }
 
   final Duration _autoSlideDuration;
@@ -160,8 +207,9 @@ class StackedListController {
 
   /// Free used elements.
   void dispose() {
-    _animationController.dispose();
+    _transitionController.dispose();
     _autoSlideTimer?.cancel();
     _outermostCardOffset.dispose();
+    _outermostTransitionController.dispose();
   }
 }

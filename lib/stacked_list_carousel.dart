@@ -50,6 +50,9 @@ class StackedListCarousel<T> extends StatefulWidget {
   /// Duration of card transitions effect. Defaults to 200 milliseconds.
   final Duration transitionDuration;
 
+  /// Duration of outermost card fly effect. Defaults to 250 milliseconds.
+  final Duration outermostTransitionDuration;
+
   /// Callback function to notify outermost card index whenever a transitions completed.
   final Function(int outermostIndex)? onOutermostIndexChanged;
 
@@ -63,14 +66,15 @@ class StackedListCarousel<T> extends StatefulWidget {
     this.maxDisplayedItemsCount = 3,
     this.autoSlideDuration = const Duration(seconds: 8),
     this.transitionDuration = const Duration(milliseconds: 200),
+    this.outermostTransitionDuration = const Duration(milliseconds: 450),
     this.onOutermostIndexChanged,
   })  : assert(
-          viewSizeHeightFactor > 0 && viewSizeHeightFactor < 1,
-          'view size height factor must be in range [0.0...1.0]',
+          viewSizeHeightFactor > 0 && viewSizeHeightFactor <= 1,
+          'view size height factor must be in range (0.0...1.0]',
         ),
         assert(
           outermostCardHeightFactor > 0 && outermostCardHeightFactor < 1,
-          'outermost card height factor must be in range [0.0...1.0]',
+          'outermost card height factor must be in range (0.0...1.0)',
         ),
         assert(
           outermostCardHeightFactor < viewSizeHeightFactor,
@@ -85,6 +89,8 @@ class StackedListCarousel<T> extends StatefulWidget {
 class _StackedListCarouselState extends State<StackedListCarousel>
     with TickerProviderStateMixin {
   late final StackedListController controller;
+
+  /// The height gap factor relative to view size between each card.
   late final double itemGapFactor;
 
   Size? viewSize;
@@ -96,8 +102,9 @@ class _StackedListCarouselState extends State<StackedListCarousel>
         widget.items.length,
         widget.maxDisplayedItemsCount,
       ),
-      itemCount: widget.items.length,
+      itemsCount: widget.items.length,
       transitionDuration: widget.transitionDuration,
+      outermostTransitionDuration: widget.outermostTransitionDuration,
       autoSlideDuration: widget.autoSlideDuration,
       onSwapDone: (index) {
         setState(() {});
@@ -168,13 +175,13 @@ class _StackedListCarouselState extends State<StackedListCarousel>
 
   AnimatedBuilder _buildItem(int index) => AnimatedBuilder(
         key: UniqueKey(),
-        animation: controller.animationController,
+        animation: controller.transitionController,
         builder: (context, child) {
           final Size rawSize = viewSize! *
               (widget.outermostCardHeightFactor +
                   controller.sizeFactors[index] *
                       itemGapFactor *
-                      controller.animationController.value);
+                      controller.transitionController.value);
 
           /// Actual displayed size of built banner.
           Size bannerSize = Size(
@@ -187,16 +194,15 @@ class _StackedListCarouselState extends State<StackedListCarousel>
           return IgnorePointer(
             // Only allows front item to be interact
             ignoring: !(index == controller.outermostIndex),
-            child: AnimatedContainer(
+            child: Container(
               margin: EdgeInsets.only(
                 top: (viewSize!.height * widget.viewSizeHeightFactor) *
                     itemGapFactor *
                     (controller.sizeFactors[index] +
-                        controller.animationController.value),
+                        controller.transitionValue),
               ),
               width: bannerSize.width,
               height: bannerSize.height,
-              duration: controller.animationController.duration!,
               child: index == controller.outermostIndex
                   ? ValueListenableBuilder<Offset>(
                       valueListenable: controller.outermostCardOffset,
