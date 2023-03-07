@@ -10,10 +10,10 @@
 * Allow config fixed aspect ratio of display items. If cardAspectRatio is not provided, the rendered view will occupy all remain space.
 
     * 4 x 3
-      <img alt="Demo" src="https://raw.githubusercontent.com/hongduc6/stacked_list_carousel/master/example/asset/4_3.png" height="500">
+    <img alt="Demo" src="https://raw.githubusercontent.com/hongduc6/stacked_list_carousel/master/example/asset/4_3.png" height="300">
 
     * 16 x 9
-      <img alt="Demo" src="https://raw.githubusercontent.com/hongduc6/stacked_list_carousel/master/example/asset/16_9.png" height="500">
+    <img alt="Demo" src="https://raw.githubusercontent.com/hongduc6/stacked_list_carousel/master/example/asset/16_9.png" height="300">
 
 * Provide item discard listener, which provides its information and discarded swipe direction.
 

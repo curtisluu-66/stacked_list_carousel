@@ -135,6 +135,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
                 (i) => _buildItem(i),
               ),
             );
+            setState(() {});
           }
         },
       ),
