@@ -74,9 +74,20 @@ class _HomeState extends State<Home> {
         maxDisplayedItemsCount: 3,
         // Config view size height factor relative to view height
         viewSizeHeightFactor: 0.85,
+        // Config animation transitions duration
         autoSlideDuration: const Duration(seconds: 4),
         transitionDuration: const Duration(milliseconds: 250),
         outermostTransitionDuration: const Duration(milliseconds: 200),
+        // You can listen for discarded item and its swipe direction
+        onItemDiscarded: (index, direction) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'banner ${banners[index].title} discarded in $direction direction!'),
+            ),
+          );
+        },
       ),
     );
   }

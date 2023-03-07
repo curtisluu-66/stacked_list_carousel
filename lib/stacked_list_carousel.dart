@@ -53,6 +53,10 @@ class StackedListCarousel<T> extends StatefulWidget {
   /// Duration of outermost card fly effect. Defaults to 250 milliseconds.
   final Duration outermostTransitionDuration;
 
+  /// Callback function to notify latest discarded card index and its swipe direction
+  /// whenever a transitions completed with user gesture.
+  final SwipeNotify? onItemDiscarded;
+
   /// Callback function to notify outermost card index whenever a transitions completed.
   final Function(int outermostIndex)? onOutermostIndexChanged;
 
@@ -67,6 +71,7 @@ class StackedListCarousel<T> extends StatefulWidget {
     this.autoSlideDuration = const Duration(seconds: 8),
     this.transitionDuration = const Duration(milliseconds: 200),
     this.outermostTransitionDuration = const Duration(milliseconds: 450),
+    this.onItemDiscarded,
     this.onOutermostIndexChanged,
   })  : assert(
           viewSizeHeightFactor > 0 && viewSizeHeightFactor <= 1,
@@ -98,7 +103,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
   @override
   void initState() {
     controller = StackedListController(
-      maxDisplayedBannersCount: min(
+      maxDisplayedItemsCount: min(
         widget.items.length,
         widget.maxDisplayedItemsCount,
       ),
@@ -106,7 +111,8 @@ class _StackedListCarouselState extends State<StackedListCarousel>
       transitionDuration: widget.transitionDuration,
       outermostTransitionDuration: widget.outermostTransitionDuration,
       autoSlideDuration: widget.autoSlideDuration,
-      onSwapDone: (index) {
+      onItemDiscarded: widget.onItemDiscarded,
+      onOutermostIndexChanged: (index) {
         setState(() {});
         widget.onOutermostIndexChanged?.call(index);
       },
@@ -115,17 +121,17 @@ class _StackedListCarouselState extends State<StackedListCarousel>
 
     itemGapFactor =
         (widget.viewSizeHeightFactor - widget.outermostCardHeightFactor) /
-            (controller.maxDisplayedBannersCount + 1);
+            (controller.maxDisplayedItemsCount + 1);
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => Future.delayed(
         Duration.zero,
         () {
           /// After get view size for the first time, do initialize widgets.
-          if (controller.maxDisplayedBannersCount > 1) {
+          if (controller.maxDisplayedItemsCount > 1) {
             controller.setCards(
               List<Widget>.generate(
-                controller.maxDisplayedBannersCount,
+                controller.maxDisplayedItemsCount,
                 (i) => _buildItem(i),
               ),
             );
@@ -193,7 +199,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
 
           return IgnorePointer(
             // Only allows front item to be interact
-            ignoring: !(index == controller.outermostIndex),
+            ignoring: !(index == controller.outermostCardIndex),
             child: Container(
               margin: EdgeInsets.only(
                 top: (viewSize!.height * widget.viewSizeHeightFactor) *
@@ -203,7 +209,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
               ),
               width: bannerSize.width,
               height: bannerSize.height,
-              child: index == controller.outermostIndex
+              child: index == controller.outermostCardIndex
                   ? ValueListenableBuilder<Offset>(
                       valueListenable: controller.outermostCardOffset,
                       builder: (context, offset, _) => Transform.translate(
@@ -225,7 +231,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
                                 context,
                                 bannerSize,
                                 controller.displayedIndexes[index],
-                                (index) == controller.outermostIndex,
+                                (index) == controller.outermostCardIndex,
                               ),
                             ),
                           ),
@@ -238,7 +244,7 @@ class _StackedListCarouselState extends State<StackedListCarousel>
                         context,
                         bannerSize,
                         controller.displayedIndexes[index],
-                        (index) == controller.outermostIndex,
+                        (index) == controller.outermostCardIndex,
                       ),
                     ),
             ),

@@ -1,8 +1,15 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:stacked_list_carousel/src/enums/outermost_card_behavior.dart';
+import 'package:stacked_list_carousel/src/enums/swipe_direction.dart';
 import 'package:stacked_list_carousel/src/extension/list_reorder_extension.dart';
+
+typedef SwipeNotify = void Function(
+  int outermostIndex,
+  SwipeDirection direction,
+);
 
 /// Control animate state of [StackedCardCarousel], handle user's interactivity
 /// and ordering children.
@@ -10,14 +17,17 @@ class StackedListController {
   /// Number of completed transitions.
   int _transitionsCount = 0;
 
-  /// The current outermost index of animate state.
+  /// The current outermost index inside widgets list.
   ///
-  /// This index does not show which element is in outermost position,
+  /// This index does not show which element is in outermost position (see [outermostItemIndex]),
   /// but only the order of the widget in the stack view.
-  int get outermostIndex => _transitionsCount % maxDisplayedBannersCount;
+  int get outermostCardIndex => _transitionsCount % maxDisplayedItemsCount;
 
-  /// See [StackedCardCarousel.maxDisplayedBannersCount]
-  final int maxDisplayedBannersCount;
+  /// The current outermost index inside items list.
+  int get outermostItemIndex => _transitionsCount % itemsCount;
+
+  /// See [StackedCardCarousel.maxDisplayedItemsCount]
+  final int maxDisplayedItemsCount;
 
   final int itemsCount;
 
@@ -44,17 +54,20 @@ class StackedListController {
   /// Actual displayed size of item inside banner widgets.
   List<int> sizeFactors = [];
 
+  SwipeNotify? onItemDiscarded;
+
   /// Callback function to notify new outermost card items index transition completed.
-  Function(int index)? onSwapDone;
+  Function(int index)? onOutermostIndexChanged;
 
   StackedListController({
-    required this.maxDisplayedBannersCount,
+    required this.maxDisplayedItemsCount,
     required this.itemsCount,
     required Duration transitionDuration,
     required Duration outermostTransitionDuration,
     required Duration autoSlideDuration,
     required TickerProvider vsync,
-    this.onSwapDone,
+    this.onItemDiscarded,
+    this.onOutermostIndexChanged,
   })  : _autoSlideDuration = autoSlideDuration,
         _transitionController = AnimationController(
           vsync: vsync,
@@ -65,13 +78,13 @@ class StackedListController {
           duration: outermostTransitionDuration,
         ) {
     displayedIndexes = List.generate(
-      maxDisplayedBannersCount,
+      maxDisplayedItemsCount,
       (index) => index,
     );
 
     sizeFactors = List.generate(
-      maxDisplayedBannersCount,
-      (index) => maxDisplayedBannersCount - index - 1,
+      maxDisplayedItemsCount,
+      (index) => maxDisplayedItemsCount - index - 1,
     );
 
     _outermostTransitionController.addListener(
@@ -155,9 +168,14 @@ class StackedListController {
     bool withOutermostDiscardEffect = false,
   }) async {
     if (withOutermostDiscardEffect) {
+      onItemDiscarded?.call(
+        _transitionsCount % itemsCount,
+        getSwipeDirection(offset: _outermostCardOffset.value),
+      );
       await outermostTransitionController.forward(from: 0.0);
     }
 
+    // Rotate arrays
     for (int i = 0; i < displayedIndexes.length; i++) {
       displayedIndexes[i] = (displayedIndexes[i] + 1) % itemsCount;
     }
@@ -171,7 +189,7 @@ class StackedListController {
     _outermostTransitionController.reset();
 
     _transitionController.forward(from: 0.0);
-    onSwapDone?.call(_transitionsCount % itemsCount);
+    onOutermostIndexChanged?.call(outermostItemIndex);
     _outermostCardOffset.value = Offset.zero;
   }
 
@@ -211,5 +229,18 @@ class StackedListController {
     _autoSlideTimer?.cancel();
     _outermostCardOffset.dispose();
     _outermostTransitionController.dispose();
+  }
+}
+
+SwipeDirection getSwipeDirection({required Offset offset}) {
+  final double dir = offset.direction;
+  if (dir >= 0 && dir < pi / 2) {
+    return SwipeDirection.bottomRight;
+  } else if (dir >= pi / 2 && dir <= pi) {
+    return SwipeDirection.bottomLeft;
+  } else if (dir >= -pi / 2 && dir < 0) {
+    return SwipeDirection.topRight;
+  } else {
+    return SwipeDirection.topLeft;
   }
 }
