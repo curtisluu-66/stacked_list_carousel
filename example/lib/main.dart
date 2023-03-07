@@ -33,7 +33,7 @@ class _HomeState extends State<Home> {
       backgroundColor: Colors.grey,
       body: StackedListCarousel<AwesomeInAppBanner>(
         items: banners,
-        // Highly customizable builder function which actual widget's size,
+        // Highly customizable builder function which provides actual widget's size,
         // its index inside item list, and whether built item is outermost
         itemBuilder: (context, size, index, isOutermost) => ClipRRect(
           borderRadius: BorderRadius.circular(6.0),
