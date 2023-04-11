@@ -14,12 +14,10 @@ typedef SizedWidgetBuilder<T> = Widget Function(BuildContext, T, Size);
 typedef WrapperBuilder = Widget Function(Widget);
 
 class StackedListCarousel<T> extends StatefulWidget {
-  StackedListCarousel({
+  const StackedListCarousel({
     required this.items,
     required this.cardBuilder,
     required this.behavior,
-    WrapperBuilder? innerCardsWrapper,
-    WrapperBuilder? outermostCardWrapper,
     this.cardSwipedCallback,
     this.cardAspectRatio,
     this.controller,
@@ -32,6 +30,8 @@ class StackedListCarousel<T> extends StatefulWidget {
     this.itemGapHeightFactor = 0.05,
     this.autoSlideDuration = const Duration(seconds: 5),
     this.outermostCardAnimationDuration = const Duration(milliseconds: 450),
+    this.innerCardsWrapper,
+    this.outermostCardWrapper,
     Key? key,
   })  : assert(
           behavior != CarouselBehavior.consume || emptyBuilder != null,
@@ -48,10 +48,7 @@ class StackedListCarousel<T> extends StatefulWidget {
           'Not enough space. The total height of outermost card and gaps must '
           'be lower than 1',
         ),
-        super(key: key) {
-    this.outermostCardWrapper = outermostCardWrapper ?? (c) => c;
-    this.innerCardsWrapper = innerCardsWrapper ?? (c) => c;
-  }
+        super(key: key);
 
   /// A list of [T] items which used to render cards.
   final List<T> items;
@@ -64,10 +61,10 @@ class StackedListCarousel<T> extends StatefulWidget {
   final CarouselBehavior behavior;
 
   /// A widget builder which helps you customize outermost card.
-  late final WrapperBuilder outermostCardWrapper;
+  final WrapperBuilder? outermostCardWrapper;
 
   /// A widget builder which helps you customize inner cards.
-  late final WrapperBuilder innerCardsWrapper;
+  final WrapperBuilder? innerCardsWrapper;
 
   /// Notify card discarded callback. It provides discarded item and discarded
   /// quarter direction
@@ -137,6 +134,9 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
   late Animation<double> innermostCardMarginAnimation;
 
   Size viewSize = Size.zero;
+
+  bool get hasInnerWrapper => widget.innerCardsWrapper != null;
+  bool get hasOutermostWrapper => widget.outermostCardWrapper != null;
 
   @override
   void initState() {
@@ -371,6 +371,10 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
     Size size,
     Alignment scaleAlignment,
   ) {
+    final child = cards[(reorderCardsCount + controller.swapCount + 1) %
+            controller.itemCount] ??
+        const SizedBox.shrink();
+
     return AnimatedBuilder(
       animation: innermostCardMarginAnimation,
       builder: (context, child) => _alignPositioned(
@@ -384,11 +388,7 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
           child: child,
         ),
       ),
-      child: widget.innerCardsWrapper.call(
-        cards[(reorderCardsCount + controller.swapCount + 1) %
-                controller.itemCount] ??
-            const SizedBox.shrink(),
-      ),
+      child: hasInnerWrapper ? widget.innerCardsWrapper!.call(child) : child,
     );
   }
 
@@ -413,9 +413,13 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
               ? sizeFactorAnimations[i].value
               : cardsSizeFactors[i],
           alignment: scaleAlignment,
-          child: (i == reorderCardsCount - 1 && controller.transitionForwarding)
-              ? widget.outermostCardWrapper.call(child)
-              : widget.innerCardsWrapper.call(child),
+          child: hasInnerWrapper
+              ? ((i == reorderCardsCount - 1 && controller.transitionForwarding)
+                  ? hasOutermostWrapper
+                      ? widget.outermostCardWrapper!.call(child)
+                      : child
+                  : widget.innerCardsWrapper!.call(child))
+              : child,
         ),
       ),
     );
@@ -425,6 +429,9 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
     Size size,
     Alignment scaleAlignment,
   ) {
+    final child =
+        cards[controller.realOutermostIndex] ?? const SizedBox.shrink();
+
     return _alignPositioned(
       margin: cardsMargin.last * size.height,
       child: ValueListenableBuilder<Offset>(
@@ -448,15 +455,16 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
           ),
           child: AnimatedBuilder(
             animation: controller.transitionController,
-            builder: (context, child) => Transform.scale(
+            builder: (context, _) => Transform.scale(
               scale: cardsSizeFactors.last,
               alignment: scaleAlignment,
               child: Visibility(
                 visible: !controller.transitionForwarding,
-                child: widget.outermostCardWrapper.call(
-                  cards[controller.realOutermostIndex] ??
-                      const SizedBox.shrink(),
-                ),
+                child: hasOutermostWrapper
+                    ? widget.outermostCardWrapper!.call(
+                        child,
+                      )
+                    : child,
               ),
             ),
           ),

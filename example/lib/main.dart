@@ -41,7 +41,7 @@ class _HomeState extends State<Home> {
       ),
       body: StackedListCarousel<AwesomeInAppBanner>(
         items: banners,
-        behavior: CarouselBehavior.loop,
+        behavior: CarouselBehavior.consume,
         // A widget builder callback to build cards with context, card model
         // and its size attributes.
         cardBuilder: (context, item, size) {
