@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:stacked_list_carousel/stacked_list_carousel.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -9,8 +13,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Stacked Cards Example',
       theme: ThemeData(
+        useMaterial3: true,
         primarySwatch: Colors.blue,
       ),
       home: const Home(title: 'Awesome Card Carousel'),
@@ -30,63 +36,105 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey,
+      appBar: AppBar(
+        title: const Text('Stacked List Carousel'),
+      ),
       body: StackedListCarousel<AwesomeInAppBanner>(
         items: banners,
-        // Highly customizable builder function which provides actual widget's size,
-        // its index inside item list, and whether built item is outermost
-        itemBuilder: (context, size, index, isOutermost) => ClipRRect(
-          borderRadius: BorderRadius.circular(6.0),
-          child: Stack(
-            children: [
-              Image.network(
-                banners[index].imgUrl,
-                width: size.width,
-                height: size.height,
-              ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    banners[index].title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize:
-                          30.0 * size.width / MediaQuery.of(context).size.width,
+        behavior: CarouselBehavior.loop,
+        // A widget builder callback to build cards with context, card model
+        // and its size attributes.
+        cardBuilder: (context, item, size) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(10.0),
+            child: Stack(
+              children: [
+                Image.network(
+                  item.imgUrl,
+                  width: size.width,
+                  height: size.height,
+                  fit: BoxFit.cover,
+                ),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      item.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 30.0 *
+                            size.width /
+                            MediaQuery.of(context).size.width,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (!isOutermost)
-                SizedBox.expand(
-                  child: Container(color: Colors.grey.withOpacity(0.65)),
-                )
-            ],
-          ),
-        ),
-        // Config card's aspect ratio
-        cardAspectRatio: 2 / 3,
-        // Config outermost card height factor relative to view height
-        outermostCardHeightFactor: 0.7,
-        // Config max item displayed count
-        maxDisplayedItemsCount: 3,
-        // Config view size height factor relative to view height
-        viewSizeHeightFactor: 0.85,
-        // Config animation transitions duration
-        autoSlideDuration: const Duration(seconds: 4),
-        transitionDuration: const Duration(milliseconds: 250),
-        outermostTransitionDuration: const Duration(milliseconds: 200),
-        // You can listen for discarded item and its swipe direction
-        onItemDiscarded: (index, direction) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'banner ${banners[index].title} discarded in $direction direction!'),
+              ],
             ),
           );
+        },
+        // You can config fixed card width / height ratio. For default, the ratio
+        // is view size width / height
+        // cardAspectRatio: 0.75,
+        // Config outermost card height factor relative to view height
+        outermostCardHeightFactor: 0.8,
+        // Gap height factor relative to view height
+        itemGapHeightFactor: 0.05,
+        // Config max item displayed count
+        maxDisplayedItemCount: 3,
+        // You can config transition duration here (the animation between cards
+        // swap). Defaults to 450 milliseconds
+        animationDuration: const Duration(milliseconds: 550),
+        // You can config auto slide duration. This only works in loop mode.
+        autoSlideDuration: const Duration(seconds: 8),
+        // Define cards align
+        alignment: StackedListAxisAlignment.bottom,
+        // In consume mode, you must declare the empty builder, which will be
+        // built when user swiped all cards.
+        emptyBuilder: (context) => const Center(
+          child: Text('You have consumed all cards!'),
+        ),
+        // You can customize inner cards wrapper builder. For example, you want to
+        // shade the unready cards, just wrap it with a gray decorated box.
+        innerCardsWrapper: (child) {
+          return Stack(
+            children: [
+              child,
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xffA6A3CC).withOpacity(0.64),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        // You can also customize outermost card builder for some special effects.
+        outermostCardWrapper: (child) {
+          return DecoratedBox(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blueAccent,
+                  blurRadius: 12,
+                  blurStyle: BlurStyle.normal,
+                  spreadRadius: 6,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        // When implementing use case like tinder card swipe,
+        // you'll wish to know what swipe behavior user did.
+        // This callback will provide the discard direction of
+        // corresponding item for you.
+        cardSwipedCallback: (item, direction) {
+          debugPrint('card swiped: ${item.title}, $direction');
         },
       ),
     );
@@ -107,33 +155,33 @@ class AwesomeInAppBanner {
 
 List<AwesomeInAppBanner> banners = <AwesomeInAppBanner>[
   AwesomeInAppBanner(
-    'https://picsum.photos/id/100/600/900',
-    'My awesome banner 1',
+    'https://picsum.photos/id/123/1200/1800',
+    'My awesome banner No.1',
     Colors.green.shade300,
   ),
   AwesomeInAppBanner(
-    'https://picsum.photos/id/200/600/900',
-    'My awesome banner 2',
+    'https://picsum.photos/id/234/1200/1800',
+    'My awesome banner No.2',
     Colors.red.shade300,
   ),
   AwesomeInAppBanner(
-    'https://picsum.photos/id/300/600/900',
-    'My awesome banner 3',
+    'https://picsum.photos/id/345/1200/1800',
+    'My awesome banner No.3',
     Colors.purple.shade300,
   ),
   AwesomeInAppBanner(
-    'https://picsum.photos/id/400/600/900',
-    'My awesome banner 4',
+    'https://picsum.photos/id/456/1200/1800',
+    'My awesome banner No.4',
     Colors.yellow.shade300,
   ),
   AwesomeInAppBanner(
-    'https://picsum.photos/id/500/600/900',
-    'My awesome banner 5',
+    'https://picsum.photos/id/567/1200/1800',
+    'My awesome banner No.5',
     Colors.blue.shade300,
   ),
   AwesomeInAppBanner(
-    'https://picsum.photos/id/600/600/900',
-    'My awesome banner 6',
+    'https://picsum.photos/id/678/1200/1800',
+    'My awesome banner No.6',
     Colors.orange.shade300,
   ),
 ];

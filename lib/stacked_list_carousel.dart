@@ -1,146 +1,201 @@
-library stacked_list_carousel;
-
 import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'src/controller/stacked_list_controller.dart';
+import 'package:stacked_list_carousel/src/controller/stacked_list_controller.dart';
+import 'package:stacked_list_carousel/src/enums/enums.dart';
+import 'package:stacked_list_carousel/src/extension/extensions.dart';
+import 'package:stacked_list_carousel/src/helpers/aspect_size.dart';
 
-typedef ItemBuilder = Widget Function(
-  BuildContext context,
-  Size size,
-  int index,
-  bool isOutermostCard,
-);
+export './src/controller/stacked_list_controller.dart';
+export './src/enums/enums.dart';
 
-/// A widget that layout its stacked-like children vertically, which behaves like a carousel.
-///
-/// Most suitable with in-app banners UI use cases.
+typedef SizedWidgetBuilder<T> = Widget Function(BuildContext, T, Size);
+
+typedef WrapperBuilder = Widget Function(Widget);
+
 class StackedListCarousel<T> extends StatefulWidget {
-  /// List of card models.
+  StackedListCarousel({
+    required this.items,
+    required this.cardBuilder,
+    required this.behavior,
+    WrapperBuilder? innerCardsWrapper,
+    WrapperBuilder? outermostCardWrapper,
+    this.cardSwipedCallback,
+    this.cardAspectRatio,
+    this.controller,
+    this.emptyBuilder,
+    this.alignment = StackedListAxisAlignment.bottom,
+    this.outermostCardHeightFactor = 0.8,
+    this.animationDuration = const Duration(milliseconds: 450),
+    this.transitionCurve = Curves.easeIn,
+    this.maxDisplayedItemCount = 3,
+    this.itemGapHeightFactor = 0.05,
+    this.autoSlideDuration = const Duration(seconds: 5),
+    this.outermostCardAnimationDuration = const Duration(milliseconds: 450),
+    Key? key,
+  })  : assert(
+          behavior != CarouselBehavior.consume || emptyBuilder != null,
+          'emptyBuilder() must be provided in consume mode',
+        ),
+        assert(
+          maxDisplayedItemCount > 1,
+          'maxDisplayedItemCount must be greater than 1',
+        ),
+        assert(
+          outermostCardHeightFactor +
+                  (maxDisplayedItemCount - 1) * itemGapHeightFactor <=
+              1,
+          'Not enough space. The total height of outermost card and gaps must '
+          'be lower than 1',
+        ),
+        super(key: key) {
+    this.outermostCardWrapper = outermostCardWrapper ?? (c) => c;
+    this.innerCardsWrapper = innerCardsWrapper ?? (c) => c;
+  }
+
+  /// A list of [T] items which used to render cards.
   final List<T> items;
 
-  /// The build method that generates card widget, which includes 4 params:
-  /// * BuildContext: current build context of stacked card carousel.
-  /// * Size: the actual space that the widget card takes up.
-  /// * int: the actual index of built item inside [items] list.
-  /// * bool: whether built item is the outermost card of the carousel at present.
-  final ItemBuilder itemBuilder;
+  /// A function which provides build context, current item & rendered size for
+  /// building widgets.
+  final SizedWidgetBuilder<T> cardBuilder;
 
-  /// The relative height of whole stacked card carousel to the height.
-  /// of the entire view, calculated by the formula:
-  ///
-  /// [viewSizeHeightFactor] = actualCarouselHeight / viewSize.
-  final double viewSizeHeightFactor;
+  /// Define carousel behavior. See [CarouselBehavior].
+  final CarouselBehavior behavior;
 
-  /// The relative height of the outermost card to the height
-  /// of the entire view, calculated by the formula:
-  ///
-  /// [outermostCardHeightFactor] = outermostCardHeight / viewSize.
-  final double outermostCardHeightFactor;
+  /// A widget builder which helps you customize outermost card.
+  late final WrapperBuilder outermostCardWrapper;
 
-  /// Fixed display length / width ratio for each card. If null, displayed
-  /// cards will have default size base to layout size.
+  /// A widget builder which helps you customize inner cards.
+  late final WrapperBuilder innerCardsWrapper;
+
+  /// Notify card discarded callback. It provides discarded item and discarded
+  /// quarter direction
+  final CardSwipedCallback<T>? cardSwipedCallback;
+
+  /// Config fixed card aspect widget / height ratio. By default, card's aspect ratio equals to
+  /// view size width / height
   final double? cardAspectRatio;
 
-  /// The maximum number of cards displayed on the carousel. Defaults to 3
-  final int maxDisplayedItemsCount;
+  /// An optional [StackedListController] to provide, helpful for access current
+  /// carousel state
+  final StackedListController<T>? controller;
 
-  /// Duration between automatic card transitions. Defaults to 8 seconds.
+  /// The widget builder function that build empty widget, when there is no card
+  /// left in carousel. In consume behavior, this function is required.
+  final WidgetBuilder? emptyBuilder;
+
+  /// See [StackedListAxisAlignment]
+  final StackedListAxisAlignment alignment;
+
+  /// The height factor of outermost card relative to view size. Must be lower
+  /// than 1.
+  final double outermostCardHeightFactor;
+
+  /// The cards transition duration.
+  final Duration animationDuration;
+
+  /// Customized transition curves.
+  final Curve transitionCurve;
+
+  /// Limit max amount of displayed cards inside carousel.
+  final int maxDisplayedItemCount;
+
+  /// The gap between cards relatives to height factor.
+  final double itemGapHeightFactor;
+
+  /// The auto slide duration, which only works in loop mode.
   final Duration autoSlideDuration;
 
-  /// Duration of card transitions effect. Defaults to 200 milliseconds.
-  final Duration transitionDuration;
-
-  /// Duration of outermost card fly effect. Defaults to 250 milliseconds.
-  final Duration outermostTransitionDuration;
-
-  /// Callback function to notify latest discarded card index and its swipe direction
-  /// whenever a transitions completed with user gesture.
-  final SwipeNotify? onItemDiscarded;
-
-  /// Callback function to notify outermost card index whenever a transitions completed.
-  final Function(int outermostIndex)? onOutermostIndexChanged;
-
-  const StackedListCarousel({
-    Key? key,
-    required this.items,
-    required this.itemBuilder,
-    this.viewSizeHeightFactor = 1.0,
-    this.outermostCardHeightFactor = 0.8,
-    this.cardAspectRatio,
-    this.maxDisplayedItemsCount = 3,
-    this.autoSlideDuration = const Duration(seconds: 8),
-    this.transitionDuration = const Duration(milliseconds: 200),
-    this.outermostTransitionDuration = const Duration(milliseconds: 450),
-    this.onItemDiscarded,
-    this.onOutermostIndexChanged,
-  })  : assert(
-          viewSizeHeightFactor > 0 && viewSizeHeightFactor <= 1,
-          'view size height factor must be in range (0.0...1.0]',
-        ),
-        assert(
-          outermostCardHeightFactor > 0 && outermostCardHeightFactor < 1,
-          'outermost card height factor must be in range (0.0...1.0)',
-        ),
-        assert(
-          outermostCardHeightFactor < viewSizeHeightFactor,
-          'outermostCardHeightFactor must not be greater than viewSizeHeightFactor',
-        ),
-        super(key: key);
+  /// The outermost card flying away animation duration.
+  final Duration outermostCardAnimationDuration;
 
   @override
-  State<StackedListCarousel> createState() => _StackedListCarouselState();
+  State<StackedListCarousel<T>> createState() => _StackedListCarouselState();
 }
 
-class _StackedListCarouselState extends State<StackedListCarousel>
+class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
     with TickerProviderStateMixin {
-  late final StackedListController controller;
+  late final StackedListController<T> controller;
 
-  /// The height gap factor relative to view size between each card.
-  late final double itemGapFactor;
+  late int reorderCardsCount;
 
-  Size? viewSize;
+  late int maxDisplayedItemCount;
+
+  late double itemGapHeightFactor;
+
+  double? cardAspectRatio;
+
+  List<Widget?> cards = List.empty(growable: true);
+
+  List<double> cardsMargin = [];
+  List<double> cardsSizeFactors = [];
+
+  List<Animation<double>> marginAnimations = [];
+  List<Animation<double>> sizeFactorAnimations = [];
+
+  late Animation<double> innermostCardMarginAnimation;
+
+  Size viewSize = Size.zero;
 
   @override
   void initState() {
-    controller = StackedListController(
-      maxDisplayedItemsCount: min(
-        widget.items.length,
-        widget.maxDisplayedItemsCount,
-      ),
-      itemsCount: widget.items.length,
-      transitionDuration: widget.transitionDuration,
-      outermostTransitionDuration: widget.outermostTransitionDuration,
-      autoSlideDuration: widget.autoSlideDuration,
-      onItemDiscarded: widget.onItemDiscarded,
-      onOutermostIndexChanged: (index) {
-        setState(() {});
-        widget.onOutermostIndexChanged?.call(index);
+    super.initState();
+
+    controller = (widget.controller ?? StackedListController<T>())
+      ..items = widget.items
+      ..transitionController = AnimationController(
+        duration: widget.animationDuration,
+        vsync: this,
+      )
+      ..outermostCardAnimationController = AnimationController(
+        duration: widget.outermostCardAnimationDuration,
+        vsync: this,
+      )
+      ..carouselBehavior = widget.behavior
+      ..onAnimating = (behavior) {
+        if (behavior == CarouselBehavior.consume) {
+          cards[controller.realOutermostIndex] = null;
+        }
+        appendCard(context, viewSize);
+
+        controller.transitionController
+          ..stop()
+          ..value = 0.0
+          ..forward();
+      }
+      ..onCardSwiped = widget.cardSwipedCallback
+      ..autoSlideDuration = widget.autoSlideDuration;
+
+    controller.transitionController.addStatusListener(
+      (status) {
+        if (status == AnimationStatus.completed) {
+          controller.swapCount++;
+          setState(() {});
+        }
       },
-      vsync: this,
     );
 
-    itemGapFactor =
-        (widget.viewSizeHeightFactor - widget.outermostCardHeightFactor) /
-            (controller.maxDisplayedItemsCount + 1);
+    controller.registerOutermostCardAnimationListener();
+
+    cardAspectRatio ??= widget.cardAspectRatio;
+
+    maxDisplayedItemCount = min(
+      controller.itemCount,
+      widget.maxDisplayedItemCount,
+    );
+
+    updateAnimations(
+      itemCount: controller.itemCount,
+      initial: true,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => Future.delayed(
-        Duration.zero,
-        () {
-          /// After get view size for the first time, do initialize widgets.
-          if (controller.maxDisplayedItemsCount > 1) {
-            controller.setCards(
-              List<Widget>.generate(
-                controller.maxDisplayedItemsCount,
-                (i) => _buildItem(i),
-              ),
-            );
-            setState(() {});
-          }
-        },
-      ),
+      (_) {
+        controller.startTransitionLoop();
+        setState(() {});
+      },
     );
-    super.initState();
   }
 
   @override
@@ -149,107 +204,294 @@ class _StackedListCarouselState extends State<StackedListCarousel>
     super.dispose();
   }
 
+  void appendCard(
+    BuildContext context,
+    Size size,
+  ) {
+    if (cards.length < controller.itemCount) {
+      cards.add(_indexedCard(context, cards.length));
+    }
+  }
+
+  void updateAnimations({
+    required int itemCount,
+    bool initial = false,
+  }) {
+    if (itemCount == controller.itemCount && !initial) return;
+
+    maxDisplayedItemCount = min(
+      itemCount,
+      widget.maxDisplayedItemCount,
+    );
+
+    itemGapHeightFactor = min(
+      widget.itemGapHeightFactor,
+      (1 - widget.outermostCardHeightFactor) / (maxDisplayedItemCount - 1),
+    );
+
+    reorderCardsCount = maxDisplayedItemCount - 1;
+
+    final freeHeightFactor = 1 -
+        (widget.outermostCardHeightFactor +
+            (maxDisplayedItemCount - 1) * itemGapHeightFactor);
+
+    cardsMargin
+      ..clear()
+      ..addAll(
+        List.generate(
+          maxDisplayedItemCount,
+          (index) => freeHeightFactor / 2 + (itemGapHeightFactor * index),
+        ),
+      );
+
+    cardsSizeFactors
+      ..clear()
+      ..addAll(
+        List.generate(
+          maxDisplayedItemCount,
+          (index) =>
+              widget.outermostCardHeightFactor -
+              widget.itemGapHeightFactor * (maxDisplayedItemCount - index - 1),
+        ),
+      );
+
+    marginAnimations
+      ..clear()
+      ..addAll(
+        List.generate(
+          reorderCardsCount,
+          (index) => Tween<double>(
+            begin: cardsMargin[index],
+            end: cardsMargin[index + 1],
+          ).animate(
+            CurvedAnimation(
+              parent: controller.transitionController,
+              curve: Interval(
+                0.1 / (maxDisplayedItemCount - index),
+                0.9 / (maxDisplayedItemCount - index),
+                curve: widget.transitionCurve,
+              ),
+            ),
+          ),
+        ),
+      );
+
+    sizeFactorAnimations
+      ..clear()
+      ..addAll(
+        List.generate(
+          reorderCardsCount,
+          (index) => Tween<double>(
+            begin: cardsSizeFactors[index],
+            end: cardsSizeFactors[index + 1],
+          ).animate(
+            CurvedAnimation(
+              parent: controller.transitionController,
+              curve: Interval(
+                0.1 / (maxDisplayedItemCount - index),
+                0.9 / (maxDisplayedItemCount - index),
+                curve: widget.transitionCurve,
+              ),
+            ),
+          ),
+        ),
+      );
+
+    if (itemCount > 1) {
+      innermostCardMarginAnimation = Tween<double>(
+        begin: cardsMargin[1],
+        end: cardsMargin[0],
+      ).animate(
+        CurvedAnimation(
+          parent: controller.transitionController,
+          curve: Interval(0.1, 0.9, curve: widget.transitionCurve),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        viewSize ??= Size(
-          constraints.maxWidth,
-          widget.cardAspectRatio != null
-              ? constraints.maxWidth /
-                  widget.cardAspectRatio! /
-                  widget.outermostCardHeightFactor
-              : constraints.maxHeight,
-        );
-        return widget.items.length == 1
-            ? widget.itemBuilder(
-                context,
-                viewSize!,
-                widget.items.first,
-                true,
-              )
-            : Container(
-                alignment: Alignment.center,
-                constraints: constraints,
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  children: controller.cardWidgets.reversed.toList(),
+      builder: (context, constraint) {
+        final size = Size(constraint.maxWidth, constraint.maxHeight);
+
+        cardAspectRatio ??= size.width / size.height;
+
+        if (cards.isEmpty || size != viewSize) {
+          viewSize = size;
+          cards
+            ..clear()
+            ..addAll(
+              List.generate(
+                min(
+                  maxDisplayedItemCount + 1 + controller.swapCount,
+                  controller.itemCount,
                 ),
-              );
+                (index) => Container(
+                  child: _indexedCard(
+                    context,
+                    (index + controller.realOutermostIndex) %
+                        controller.itemCount,
+                  ),
+                ),
+              ),
+            );
+        }
+
+        final scaleAlignment = widget.alignment.isTop
+            ? Alignment.bottomCenter
+            : Alignment.topCenter;
+
+        return SizedBox.fromSize(
+          size: viewSize,
+          child: controller.consumedAll
+              ? widget.emptyBuilder!.call(context)
+              : Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Build innermost (placeholder) card.
+                    if (controller.itemCount > 2)
+                      _innermostCard(size, scaleAlignment),
+                    // Build reorder-able cards list.
+                    ...List.generate(
+                      reorderCardsCount,
+                      (i) => _innerCard(i, size, scaleAlignment),
+                    ),
+                    // Build outermost card.
+                    _outermostCard(size, scaleAlignment),
+                  ],
+                ),
+        );
       },
     );
   }
 
-  AnimatedBuilder _buildItem(int index) => AnimatedBuilder(
-        key: UniqueKey(),
-        animation: controller.transitionController,
-        builder: (context, child) {
-          final Size rawSize = viewSize! *
-              (widget.outermostCardHeightFactor +
-                  controller.sizeFactors[index] *
-                      itemGapFactor *
-                      controller.transitionController.value);
+  Widget _innermostCard(
+    Size size,
+    Alignment scaleAlignment,
+  ) {
+    return AnimatedBuilder(
+      animation: innermostCardMarginAnimation,
+      builder: (context, child) => _alignPositioned(
+        margin: (controller.transitionForwarding
+                ? innermostCardMarginAnimation.value
+                : cardsMargin.first) *
+            size.height,
+        child: Transform.scale(
+          scale: cardsSizeFactors.first,
+          alignment: scaleAlignment,
+          child: child,
+        ),
+      ),
+      child: widget.innerCardsWrapper.call(
+        cards[(reorderCardsCount + controller.swapCount + 1) %
+                controller.itemCount] ??
+            const SizedBox.shrink(),
+      ),
+    );
+  }
 
-          /// Actual displayed size of built banner.
-          Size bannerSize = Size(
-            rawSize.width,
-            widget.cardAspectRatio != null
-                ? rawSize.width / widget.cardAspectRatio!
-                : rawSize.height,
-          );
+  Widget _innerCard(
+    int i,
+    Size size,
+    Alignment scaleAlignment,
+  ) {
+    final child = cards[(reorderCardsCount - i + controller.swapCount) %
+            controller.itemCount] ??
+        const SizedBox.shrink();
 
-          return IgnorePointer(
-            // Only allows front item to be interact
-            ignoring: !(index == controller.outermostCardIndex),
-            child: Container(
-              margin: EdgeInsets.only(
-                top: (viewSize!.height * widget.viewSizeHeightFactor) *
-                    itemGapFactor *
-                    (controller.sizeFactors[index] +
-                        controller.transitionValue),
-              ),
-              width: bannerSize.width,
-              height: bannerSize.height,
-              child: index == controller.outermostCardIndex
-                  ? ValueListenableBuilder<Offset>(
-                      valueListenable: controller.outermostCardOffset,
-                      builder: (context, offset, _) => Transform.translate(
-                        offset: offset,
-                        child: Transform.rotate(
-                          angle:
-                              offset.dx / MediaQuery.of(context).size.width / 2,
-                          child: GestureDetector(
-                            onPanStart: controller.handleDragStart,
-                            onPanUpdate: controller.handleDragUpdate,
-                            onPanEnd: (details) => controller.handleDragEnd(
-                              details,
-                              viewSize!.width,
-                              MediaQuery.of(context).size.width,
-                            ),
-                            child: SizedBox.fromSize(
-                              size: bannerSize,
-                              child: widget.itemBuilder.call(
-                                context,
-                                bannerSize,
-                                controller.displayedIndexes[index],
-                                (index) == controller.outermostCardIndex,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : SizedBox.fromSize(
-                      size: bannerSize,
-                      child: widget.itemBuilder.call(
-                        context,
-                        bannerSize,
-                        controller.displayedIndexes[index],
-                        (index) == controller.outermostCardIndex,
-                      ),
-                    ),
+    return AnimatedBuilder(
+      animation: marginAnimations[i],
+      builder: (context, _) => _alignPositioned(
+        margin: (controller.transitionForwarding
+                ? marginAnimations[i].value
+                : cardsMargin[i]) *
+            size.height,
+        child: Transform.scale(
+          scale: controller.transitionForwarding
+              ? sizeFactorAnimations[i].value
+              : cardsSizeFactors[i],
+          alignment: scaleAlignment,
+          child: (i == reorderCardsCount - 1 && controller.transitionForwarding)
+              ? widget.outermostCardWrapper.call(child)
+              : widget.innerCardsWrapper.call(child),
+        ),
+      ),
+    );
+  }
+
+  Widget _outermostCard(
+    Size size,
+    Alignment scaleAlignment,
+  ) {
+    return _alignPositioned(
+      margin: cardsMargin.last * size.height,
+      child: ValueListenableBuilder<Offset>(
+        valueListenable: controller.outermostCardOffset,
+        builder: (context, offset, child) {
+          return Transform.translate(
+            offset: offset,
+            child: Transform.rotate(
+              angle: offset.dx / MediaQuery.of(context).size.width / 2,
+              child: child,
             ),
           );
         },
+        child: GestureDetector(
+          onPanStart: controller.handleDragStart,
+          onPanUpdate: controller.handleDragUpdate,
+          onPanEnd: (details) => controller.handleDragEnd(
+            details,
+            viewSize.width,
+            MediaQuery.of(context).size.width,
+          ),
+          child: AnimatedBuilder(
+            animation: controller.transitionController,
+            builder: (context, child) => Transform.scale(
+              scale: cardsSizeFactors.last,
+              alignment: scaleAlignment,
+              child: Visibility(
+                visible: !controller.transitionForwarding,
+                child: widget.outermostCardWrapper.call(
+                  cards[controller.realOutermostIndex] ??
+                      const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _indexedCard(
+    BuildContext context,
+    int index,
+  ) {
+    final cardSize = aspectSize.call(
+      height: viewSize.height,
+      width: viewSize.width,
+      aspectRatio: cardAspectRatio!,
+    );
+
+    return SizedBox.fromSize(
+      size: cardSize,
+      child: widget.cardBuilder.call(
+        context,
+        controller.items[index],
+        cardSize,
+      ),
+    );
+  }
+
+  Widget _alignPositioned({
+    required double margin,
+    required Widget? child,
+  }) =>
+      Positioned(
+        top: !widget.alignment.isTop ? margin : null,
+        bottom: widget.alignment.isTop ? margin : null,
+        child: child ?? const SizedBox.shrink(),
       );
 }
