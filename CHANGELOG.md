@@ -14,3 +14,6 @@
 * Take a custom StackedListController as a param for StackedListCarousel constructor.
 * More smooth and clean animation.
 * Allow user to customize outermost card and inner cards decoration.
+
+## [1.0.1]
+* Update documentation

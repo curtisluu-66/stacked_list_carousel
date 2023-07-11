@@ -1,6 +1,6 @@
 # stacked_list_carousel
 
-**This package allows you to create a carousel of stacked items that is highly customizable and interactive. It is particularly well-suited for specific use cases, such as in-app banners. Support 2 carousel behavior: loop and consume.**
+**This package allows you to create a carousel of stacked items that is highly customizable and interactive. It is particularly well-suited for specific use cases, such as in-app banners or tinder's cards swipe effect. Support 2 carousel behavior: loop and consume.**
 
 ### Loop mode
 The item won't be removed from items list after being swiped and will be inserted to last position. It also implements auto slide in a exact set duration.
