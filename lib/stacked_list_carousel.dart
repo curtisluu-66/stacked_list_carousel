@@ -33,6 +33,7 @@ class StackedListCarousel<T> extends StatefulWidget {
     this.innerCardsWrapper,
     this.outermostCardWrapper,
     this.disableInteractingGestures = false,
+    this.disableAutomaticLoop = false,
     Key? key,
   })  : assert(
           behavior != CarouselBehavior.consume || emptyBuilder != null,
@@ -111,6 +112,9 @@ class StackedListCarousel<T> extends StatefulWidget {
   /// Set this to true to disable swipe interaction for the carousel.
   final bool disableInteractingGestures;
 
+  /// Set this to true to disable carousel's automatic loop timer.
+  final bool disableAutomaticLoop;
+
   @override
   State<StackedListCarousel<T>> createState() => _StackedListCarouselState();
 }
@@ -150,7 +154,9 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
 
     WidgetsBinding.instance.addPostFrameCallback(
       (_) {
-        controller.startTransitionLoop();
+        if (!widget.disableAutomaticLoop) {
+          controller.startTransitionLoop();
+        }
         setState(() {});
       },
     );
