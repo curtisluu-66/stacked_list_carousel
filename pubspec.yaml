@@ -1,6 +1,6 @@
 name: stacked_list_carousel
 description: Interactive carousel layout that arrange items vertically stacked, which most suitable for implementing in-app banners use case / tinder cards effect.
-version: 1.0.1
+version: 1.0.2
 repository: https://github.com/hongduc6/stacked_list_carousel
 
 environment:

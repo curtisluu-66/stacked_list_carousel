@@ -31,25 +31,26 @@ dependencies:
 
 ### Attributes
 
-|            **Name**            |              **Type**             |                                             **Notes**                                            |                      **Description**                     |
+|            **Name**            |             **Type**              |                                             **Notes**                                            |                     **Description**                      |
 |:------------------------------:|:---------------------------------:|:------------------------------------------------------------------------------------------------:|:--------------------------------------------------------:|
-| items                          | List<T>                           |                                                                                                  | List of card models with T type                          |
-| cardBuilder                    | Function(BuildContext,T,Size)     | - second params is built card model - third params are rendered card size                        | Card widget builder function                             |
-| behavior                       | CarouselBehavior                  | enum: loop / consume                                                                             | Config carousel transition behavior                      |
-| outermostCardWrapper           | Widget Function(Widget)?          | wrap built outermost card with another widget                                                    | Avoid using complicated build functions if possible      |
-| innerCardsWrapper              | Widget Function(Widget)?          | wrap built inner cards with another widget                                                       | --                                                       |
-| cardSwipedCallback             | void Function(T, SwipeDirection)? | - first param is swiped card model - second param is swiped direction when the card is discarded | Notify card discarded                                    |
-| cardAspectRatio                | double?                           |                                                                                                  | The width / height ratio of each card                    |
-| controller                     | StackedListController?            |                                                                                                  | Provide a custom StackedListController                   |
-| emptyBuilder                   | WidgetBuilder?                    |                                                                                                  | Must be provided in consume mode                         |
-| alignment                      | StackedListAxisAlignment          | enum: top / bottom                                                                               | Aligns card vertically top or bottom                     |
-| outermostCardHeightFactor      | double                            | Must be lower than 1                                                                             | The ratio between outermost card height / view height    |
-| animationDuration              | Duration                          |                                                                                                  | Transition animation duration                            |
-| transitionCurve                | Curve                             |                                                                                                  | Defaults to Curves.easeIn                                |
-| maxDisplayedItemCount          | int                               |                                                                                                  | Config max amount of displayed card                      |
-| itemGapHeightFactor            | double                            | outermostCardHeightFactor + (maxDisplayedItemCount - 1) * itemGapHeightFactor <= 1               | The height factor of gap between cards and view height   |
-| autoSlideDuration              | Duration                          |                                                                                                  | Config auto slide duration in loop mode                  |
-| outermostCardAnimationDuration | Duration                          |                                                                                                  | The duration of outermost card's flying effect animation |
+|             items              |              List<T>              |                                                                                                  |             List of card models with T type              |
+|          cardBuilder           |   Function(BuildContext,T,Size)   | - second params is built card model - third params are rendered card size                        |               Card widget builder function               |
+|            behavior            |         CarouselBehavior          | enum: loop / consume                                                                             |           Config carousel transition behavior            |
+|      outermostCardWrapper      |     Widget Function(Widget)?      | wrap built outermost card with another widget                                                    |   Avoid using complicated build functions if possible    |
+|       innerCardsWrapper        |     Widget Function(Widget)?      | wrap built inner cards with another widget                                                       |                            --                            |
+|       cardSwipedCallback       | void Function(T, SwipeDirection)? | - first param is swiped card model - second param is swiped direction when the card is discarded |                  Notify card discarded                   |
+|        cardAspectRatio         |              double?              |                                                                                                  |          The width / height ratio of each card           |
+|           controller           |      StackedListController?       |                                                                                                  |          Provide a custom StackedListController          |
+|          emptyBuilder          |          WidgetBuilder?           |                                                                                                  |             Must be provided in consume mode             |
+|           alignment            |     StackedListAxisAlignment      | enum: top / bottom                                                                               |           Aligns card vertically top or bottom           |
+|   outermostCardHeightFactor    |              double               | Must be lower than 1                                                                             |  The ratio between outermost card height / view height   |
+|       animationDuration        |             Duration              |                                                                                                  |              Transition animation duration               |
+|        transitionCurve         |               Curve               |                                                                                                  |                Defaults to Curves.easeIn                 |
+|     maxDisplayedItemCount      |                int                |                                                                                                  |           Config max amount of displayed card            |
+|      itemGapHeightFactor       |              double               | outermostCardHeightFactor + (maxDisplayedItemCount - 1) * itemGapHeightFactor <= 1               |  The height factor of gap between cards and view height  |
+|       autoSlideDuration        |             Duration              |                                                                                                  |         Config auto slide duration in loop mode          |
+| outermostCardAnimationDuration |             Duration              |                                                                                                  | The duration of outermost card's flying effect animation |
+|   disableInteractingGestures   |               bool                |                                                                                                  | Determine if the carousel should be interacted or not.   |
 
 ### Implements
 

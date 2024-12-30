@@ -17,3 +17,8 @@
 
 ## [1.0.1]
 * Update documentation
+
+## [1.0.2]
+Bug fixes and increase customizations:
+* Fix a bug that cause outermost card clipped inside widget's boundaries
+* Allow user to disable / enable carousel's swipe interaction

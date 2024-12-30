@@ -11,11 +11,11 @@ typedef CardSwipedCallback<T> = void Function(T, SwipeDirection);
 class StackedListController<T> {
   StackedListController();
 
-  late final CarouselBehavior carouselBehavior;
+  late CarouselBehavior carouselBehavior;
   OutermostCardBehavior outermostCardBehavior = OutermostCardBehavior.flyAway;
 
-  late final AnimationController transitionController;
-  late final AnimationController outermostCardAnimationController;
+  late AnimationController transitionController;
+  late AnimationController outermostCardAnimationController;
 
   /// List of cards model [T] .
   late List<T> items;
@@ -49,6 +49,9 @@ class StackedListController<T> {
 
   /// Callback to notify card swiped.
   late CardSwipedCallback<T>? onCardSwiped;
+
+  /// Determine if the carousel should be interacted or not.
+  late bool disableInteractingGestures;
 
   /// Trigger cards swap.
   Future<void> changeOrders({
@@ -89,8 +92,11 @@ class StackedListController<T> {
   /// On drag start, lock the timer and restrict carousel from transition.
   void handleDragStart(
     DragStartDetails details,
-  ) =>
-      _lockTimer();
+  ) {
+    if (disableInteractingGestures) return;
+
+    _lockTimer();
+  }
 
   /// Handle user's drag update gesture.
   ///
@@ -99,6 +105,8 @@ class StackedListController<T> {
   void handleDragUpdate(
     DragUpdateDetails details,
   ) {
+    if (disableInteractingGestures) return;
+
     if (itemCount > 1) {
       outermostCardOffset.value = outermostCardOffset.value + details.delta;
     }
@@ -116,6 +124,8 @@ class StackedListController<T> {
     double cardViewWidth,
     double layoutWidth,
   ) async {
+    if (disableInteractingGestures) return;
+
     if (itemCount <= 1) return;
 
     final dxThreshold = layoutWidth / 2;

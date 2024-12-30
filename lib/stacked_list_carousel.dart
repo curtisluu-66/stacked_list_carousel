@@ -32,6 +32,7 @@ class StackedListCarousel<T> extends StatefulWidget {
     this.outermostCardAnimationDuration = const Duration(milliseconds: 450),
     this.innerCardsWrapper,
     this.outermostCardWrapper,
+    this.disableInteractingGestures = false,
     Key? key,
   })  : assert(
           behavior != CarouselBehavior.consume || emptyBuilder != null,
@@ -107,6 +108,9 @@ class StackedListCarousel<T> extends StatefulWidget {
   /// The outermost card flying away animation duration.
   final Duration outermostCardAnimationDuration;
 
+  /// Set this to true to disable swipe interaction for the carousel.
+  final bool disableInteractingGestures;
+
   @override
   State<StackedListCarousel<T>> createState() => _StackedListCarouselState();
 }
@@ -142,6 +146,17 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
   void initState() {
     super.initState();
 
+    initializeArguments();
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) {
+        controller.startTransitionLoop();
+        setState(() {});
+      },
+    );
+  }
+
+  void initializeArguments() {
     controller = (widget.controller ?? StackedListController<T>())
       ..items = widget.items
       ..transitionController = AnimationController(
@@ -165,13 +180,14 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
           ..forward();
       }
       ..onCardSwiped = widget.cardSwipedCallback
-      ..autoSlideDuration = widget.autoSlideDuration;
+      ..autoSlideDuration = widget.autoSlideDuration
+      ..disableInteractingGestures = widget.disableInteractingGestures;
 
     controller.transitionController.addStatusListener(
       (status) {
         if (status == AnimationStatus.completed) {
           controller.swapCount++;
-          setState(() {});
+          if (mounted) setState(() {});
         }
       },
     );
@@ -188,13 +204,6 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
     updateAnimations(
       itemCount: controller.itemCount,
       initial: true,
-    );
-
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) {
-        controller.startTransitionLoop();
-        setState(() {});
-      },
     );
   }
 
@@ -312,58 +321,61 @@ class _StackedListCarouselState<T> extends State<StackedListCarousel<T>>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraint) {
-        final size = Size(constraint.maxWidth, constraint.maxHeight);
+    return OrientationBuilder(
+      builder: (context, orientation) => LayoutBuilder(
+        builder: (context, constraint) {
+          final size = Size(constraint.maxWidth, constraint.maxHeight);
 
-        cardAspectRatio ??= size.width / size.height;
+          cardAspectRatio ??= size.width / size.height;
 
-        if (cards.isEmpty || size != viewSize) {
-          viewSize = size;
-          cards
-            ..clear()
-            ..addAll(
-              List.generate(
-                min(
-                  maxDisplayedItemCount + 1 + controller.swapCount,
-                  controller.itemCount,
-                ),
-                (index) => Container(
-                  child: _indexedCard(
-                    context,
-                    (index + controller.realOutermostIndex) %
-                        controller.itemCount,
+          if (cards.isEmpty || size != viewSize) {
+            viewSize = size;
+            cards
+              ..clear()
+              ..addAll(
+                List.generate(
+                  min(
+                    maxDisplayedItemCount + 1 + controller.swapCount,
+                    controller.itemCount,
+                  ),
+                  (index) => Container(
+                    child: _indexedCard(
+                      context,
+                      (index + controller.realOutermostIndex) %
+                          controller.itemCount,
+                    ),
                   ),
                 ),
-              ),
-            );
-        }
+              );
+          }
 
-        final scaleAlignment = widget.alignment.isTop
-            ? Alignment.bottomCenter
-            : Alignment.topCenter;
+          final scaleAlignment = widget.alignment.isTop
+              ? Alignment.bottomCenter
+              : Alignment.topCenter;
 
-        return SizedBox.fromSize(
-          size: viewSize,
-          child: controller.consumedAll
-              ? widget.emptyBuilder!.call(context)
-              : Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Build innermost (placeholder) card.
-                    if (controller.itemCount > 2)
-                      _innermostCard(size, scaleAlignment),
-                    // Build reorder-able cards list.
-                    ...List.generate(
-                      reorderCardsCount,
-                      (i) => _innerCard(i, size, scaleAlignment),
-                    ),
-                    // Build outermost card.
-                    _outermostCard(size, scaleAlignment),
-                  ],
-                ),
-        );
-      },
+          return SizedBox.fromSize(
+            size: viewSize,
+            child: controller.consumedAll
+                ? widget.emptyBuilder!.call(context)
+                : Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      // Build innermost (placeholder) card.
+                      if (controller.itemCount > 2)
+                        _innermostCard(size, scaleAlignment),
+                      // Build reorder-able cards list.
+                      ...List.generate(
+                        reorderCardsCount,
+                        (i) => _innerCard(i, size, scaleAlignment),
+                      ),
+                      // Build outermost card.
+                      _outermostCard(size, scaleAlignment),
+                    ],
+                  ),
+          );
+        },
+      ),
     );
   }
 
